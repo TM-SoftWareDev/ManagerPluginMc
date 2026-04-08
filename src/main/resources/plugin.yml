@@ -5,3 +5,13 @@ authors: [ Timthegoathekingtheawesomethesigmatheeveythingpleasegivehimdiamondsan
 api-version: '1.21.11'
 description: yes
 load: POSTWORLD
+commands:
+  freeze:
+    description: Freeze a player
+    usage: /freeze <player>
+  setcourt:
+    description: set court location
+    usage: /court <location>
+  court:
+    description: teleport someone to court
+    usage: /court <player>

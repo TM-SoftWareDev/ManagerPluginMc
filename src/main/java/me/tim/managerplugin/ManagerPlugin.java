@@ -1,10 +1,20 @@
 package me.tim.managerplugin;
 
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -14,12 +24,17 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 public final class ManagerPlugin extends JavaPlugin implements Listener {
     // I don't even know what an Implements are IntelliJ just forced me to add this for the event handler to work
 
     private boolean funny = false;
+    public static HashSet<UUID> frozenPlayers = new HashSet<>();
+    Set<String> allowed = Set.of("/freeze", "/help", "/msg");
 
     // should I of  made a separate class for this yes am I to lazy yes
     // I hate Java
@@ -30,6 +45,7 @@ public final class ManagerPlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         System.out.println("Manager Plugin Enabled");
         getServer().getPluginManager().registerEvents(this,this);
+        saveDefaultConfig();
     }
 
     //commands can be added later because I kinda am on holiday
@@ -38,6 +54,165 @@ public final class ManagerPlugin extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         System.out.println("Manager Plugin Disabled");
+    }
+
+    @EventHandler
+    public void onEveryCommand(PlayerCommandPreprocessEvent event)
+    {
+        Player p = event.getPlayer();
+        if(frozenPlayers.contains(p.getUniqueId()))
+        {
+            String command = event.getMessage().split(" ")[0].toLowerCase();
+            if(!allowed.contains(command))
+            {
+                p.sendMessage(ChatColor.RED + "Some Commands are not allowed while frozen");
+                event.setCancelled(true);
+            }
+        }
+
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args)
+    {
+
+        if(cmd.getName().equalsIgnoreCase("setcourt"))
+        {
+            Player p = (Player) sender;
+            if(!p.isOp())
+            {
+                p.sendMessage(ChatColor.RED + "You do not have permission to use this command");
+            }
+            else
+            {
+                Location location = p.getLocation();
+                FileConfiguration config = this.getConfig();
+
+                config.set("court.world", location.getWorld().getName());
+                config.set("court.x", location.getBlockX());
+                config.set("court.y", location.getBlockY());
+                config.set("court.z", location.getBlockZ());
+                config.set("court.yaw", location.getYaw());
+                config.set("court.pitch", location.getPitch());
+
+                this.saveConfig();
+                p.sendMessage(ChatColor.GREEN + "Court has been set at X: " + location.getBlockX() + " Y: " + location.getBlockY() + " Z: " + location.getBlockZ());
+            }
+        }
+
+        if(cmd.getName().equalsIgnoreCase("court"))
+        {
+            Player p = (Player) sender;
+            if(!p.isOp())
+            {
+                p.sendMessage(ChatColor.RED + "You do not have permission to use this command");
+                return true;
+            }
+
+            if(args.length == 0)
+            {
+                p.sendMessage(ChatColor.RED + "Usage: /court <player>");
+            }
+            else
+            {
+                String playerName = args[0];
+                Player target = Bukkit.getServer().getPlayerExact(playerName);
+
+                if(target == null)
+                {
+                    p.sendMessage(ChatColor.RED + "Player not found");
+                }
+                else
+                {
+                    FileConfiguration config = this.getConfig();
+                    String worldName = config.getString("court.world");
+                    if(worldName == null)
+                    {
+                        p.sendMessage(ChatColor.RED + "World name not found in config");
+                        return true;
+                    }
+
+                    World w = Bukkit.getWorld(worldName);
+                    if(w == null)
+                    {
+                        p.sendMessage(ChatColor.RED + "World not found");
+                        return true;
+                    }
+
+                    int x = config.getInt("court.x");
+                    int y = config.getInt("court.y");
+                    int z = config.getInt("court.z");
+                    float yaw =  (float)config.getDouble("court.yaw");
+                    float pitch = (float) config.getDouble("court.pitch");
+                    target.teleport(new Location(w, x, y, z, yaw, pitch));
+
+                }
+            }
+        }
+
+
+        if (cmd.getName().equalsIgnoreCase("Freeze"))
+        {
+            if(sender instanceof Player p )
+            {
+                if(!p.isOp())
+                {
+                    p.sendMessage(ChatColor.RED + "You do not have permission to use this command");
+                    return true;
+                }
+
+                if(args.length == 0)
+                {
+                    p.sendMessage(ChatColor.RED + "Usage: /Freeze <player>");
+                }
+                else
+                {
+                    String playerName = args[0];
+                    Player target = Bukkit.getServer().getPlayerExact(playerName);
+
+                    if(target == null)
+                    {
+                        p.sendMessage(ChatColor.RED + "Player not found");
+                    }
+                    else
+                    {
+                        if(frozenPlayers.contains(target.getUniqueId()))
+                        {
+                            frozenPlayers.remove(target.getUniqueId());
+                            p.sendMessage(ChatColor.GREEN + target.getName() + " has been Unfrozen");
+                        }
+                        else
+                        {
+                            frozenPlayers.add(target.getUniqueId());
+                            p.sendMessage(ChatColor.GREEN + "Frozen " + target.getName());
+                        }
+                    }
+                }
+            }
+
+
+        }
+
+
+        return true;
+    }
+
+    @EventHandler
+    public void onMove(PlayerMoveEvent event)
+    {
+        if(frozenPlayers.contains(event.getPlayer().getUniqueId()))
+        {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteract(PlayerInteractEvent event)
+    {
+        if(frozenPlayers.contains(event.getPlayer().getUniqueId()))
+        {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler
