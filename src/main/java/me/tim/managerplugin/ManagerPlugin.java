@@ -32,7 +32,7 @@ import java.util.UUID;
 public final class ManagerPlugin extends JavaPlugin implements Listener {
     // I don't even know what an Implements are IntelliJ just forced me to add this for the event handler to work
 
-    private boolean funny = false;
+    private boolean funny = true;
     public static HashSet<UUID> frozenPlayers = new HashSet<>();
     Set<String> allowed = Set.of("/freeze", "/help", "/msg");
 
@@ -223,6 +223,7 @@ public final class ManagerPlugin extends JavaPlugin implements Listener {
         {
             if ((event.getPlayer().getName().equals("TalllTim")))
             {
+                getServer().broadcastMessage("The following is a message that Tim wrote into the code") 
                 getServer().broadcastMessage("The Best Player has Joined");
             }
         }
